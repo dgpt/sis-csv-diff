@@ -14,4 +14,4 @@ This script has two restrictions*:
 1. Both CSVs must have matching headers.
 2. Both CSVs must have a "status" column.
 
-* The code is simple enough that modifying it to suite your needs should be baby town frolics.
+\* The code is simple enough that modifying it to suite your needs should be baby town frolics.
