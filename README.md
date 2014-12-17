@@ -2,6 +2,7 @@ sis-csv-diff
 ============
 
 Efficiently compares two CSVs from an SIS system for use in an LMS.
+
 Made for use in Canvas, but may be compatible with other LMSes and related systems.
 
 gui.rb - Shoes frontend GUI
