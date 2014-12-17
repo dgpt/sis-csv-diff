@@ -1,5 +1,5 @@
 require './csv-diff'
-Shoes.app(title: "Canvas CSV Comparator",
+Shoes.app(title: "SIS CSV Comparator",
           width: 450, height: 250, resizable: false) do
 
   background white
@@ -58,7 +58,7 @@ Shoes.app(title: "Canvas CSV Comparator",
         begin
           CSVDiff::run(@old_path, @new_path, @output_path)
         rescue Exception => e
-          alert "An error occurred: " << e.message
+          alert "An error occurred: " << e.message << "\n" << e.backtrace
         end
       end
     end
