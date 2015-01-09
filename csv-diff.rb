@@ -10,14 +10,11 @@ module CSVDiff
   require "fileutils"
   require "net/http"
 
-  def self.diff(old_path, new_path)
+  def self.verbose; @verbose; end
+  def self.verbose=(bool); @verbose = bool; end
+
+  def self.diff(old_csv, new_csv)
     require "sqlite3"
-
-    # Load CSVs from provided paths (cross-platform)
-    old_csv = CSV.read(File.expand_path(old_path))
-    new_csv = CSV.read(File.expand_path(new_path))
-
-    p "Finished loading files."
 
     # Get CSV headers
     old_header, new_header = [old_csv, new_csv].map(&:first)
@@ -29,7 +26,7 @@ module CSVDiff
     # Create new CSV array (to be later written to file)
     diff = [header]
 
-    p "Calculating changes between CSV files..."
+    puts "Calculating changes between CSV files..." if self.verbose
     begin
       db = SQLite3::Database.new ':memory:'
 
@@ -39,7 +36,6 @@ module CSVDiff
       db.execute'CREATE TABLE old_csv(id INTEGER PRIMARY KEY AUTOINCREMENT, ' << sql_table_headers << ')'
 
       insert_query = proc { |table, row|
-        sql_row = row.join('\', \'').chomp(', ')
         sql_header = header.join(', ').chomp(', ')
         sql_binds = ('?, ' * row.length).chomp(', ')
 
@@ -60,6 +56,7 @@ module CSVDiff
 
       join_statement = header.collect { |a| "n.#{a} = o.#{a}" }.join(' AND ')
       res = db.execute "SELECT n.id AS new_id, o.id AS old_id FROM new_csv AS n INNER JOIN old_csv AS o ON #{join_statement};"
+      puts join_statement, res.inspect
       [0, 1].each do |t|
         db.transaction do |trans|
           res.each do |r|
@@ -202,7 +199,7 @@ def cli_run
     opts.banner = "Usage: ruby csv-diff.rb [options] old-csv new-csv"
 
     opts.on("-v", "--[no-]verbose", "Output additional information to stdout.") do |v|
-      options[:verbose] = v
+      CSVDiff::verbose = true
     end
 
     opts.on("-o", "--output FILE", "Specify a location to write to a file.") do |o|
