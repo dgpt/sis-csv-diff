@@ -86,13 +86,19 @@ module CSVDiff
     CSV.parse f2
   end
 
-  def self.write(csv_array, output)
+  def self.write(csv_array, output = nil)
     # Writes a csv_array to output
-    CSV.open(output, "w") { |csv_out|
+    writer = proc { |csv_out|
       csv_array.each do |row|
         csv_out << row
       end
     }
+
+    if output
+      CSV.open(output, "w") { |out| writer.call(out) }
+    else
+      CSV(&writer)
+    end
   end
 
   def self.extract(zip_path)
@@ -228,8 +234,8 @@ def cli_run
     old_ext, new_ext = [old_path, new_path].map { |p| File.extname p.downcase }
 
     # TODO: Default to stdout so this can be removed
-    throw "Output file not provided! Use the \"-o [File Name]\" switch to specify a file path and name ( -o ./new.csv )." unless options[:output]
     throw "Only CSV and ZIP files are accepted. Both files must be the same type." unless old_ext == new_ext && (old_ext == '.zip' || old_ext == '.csv')
+    throw "Output file not provided! Use the \"-o [File Name]\" switch to specify a file path and name ( -o ./new.zip )." unless options[:output] && old_ext == '.zip'
 
     if old_ext == '.zip'
       CSVDiff::run_zip(old_path, new_path, options[:output])
