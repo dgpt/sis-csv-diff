@@ -28,49 +28,40 @@ module CSVDiff
 
     puts "Calculating changes between CSV files..." if self.verbose
     begin
-      db = SQLite3::Database.new ':memory:'
+      db = SQLite3::Database.new ":memory:"
 
-      sql_table_headers = header.collect { |h| h + ' TEXT' }.join(', ')
-
-      db.execute 'CREATE TABLE new_csv(id INTEGER PRIMARY KEY AUTOINCREMENT, ' << sql_table_headers << ')'
-      db.execute'CREATE TABLE old_csv(id INTEGER PRIMARY KEY AUTOINCREMENT, ' << sql_table_headers << ')'
+      create_query = proc { |table|
+        sql_table_headers = header.collect { |h| h + " TEXT" }.join(", ")
+        "CREATE TABLE " << table << "(" << sql_table_headers << ")"
+      }
 
       insert_query = proc { |table, row|
-        sql_header = header.join(', ').chomp(', ')
-        sql_binds = ('?, ' * row.length).chomp(', ')
+        sql_header = header.join(", ").chomp(", ")
+        sql_binds = ("?, " * row.length).chomp(", ")
+        "INSERT INTO " << table << " (" << sql_header << ") VALUES (" << sql_binds << ")"
+      }
 
-        'INSERT INTO ' << table << ' (' << sql_header << ') VALUES (' << sql_binds << ')'
+      ["new_csv", "old_csv", "old_diff"].each { |t|
+        db.execute create_query.call(t)
       }
 
       db.transaction do |trans|
-        new_csv.each do |r|
-          query = insert_query.call('new_csv', r)
-          trans.query(query, r)
+        new_csv[1..-1].each do |r|
+          trans.query(insert_query.call("new_csv", r), r)
         end
 
-        old_csv.each do |r|
-          query = insert_query.call('old_csv', r)
-          trans.query(query, r)
+        old_csv[1..-1].each do |r|
+          trans.query(insert_query.call("old_csv", r), r)
         end
       end
 
-      join_statement = header.collect { |a| "n.#{a} = o.#{a}" }.join(' AND ')
-      res = db.execute "SELECT n.id AS new_id, o.id AS old_id FROM new_csv AS n INNER JOIN old_csv AS o ON #{join_statement};"
-      puts join_statement, res.inspect
-      [0, 1].each do |t|
-        db.transaction do |trans|
-          res.each do |r|
-            trans.execute "DELETE FROM " + (t == 0 ? 'new_csv' : 'old_csv') + " WHERE id=#{r[t]}"
-          end
-        end
-      end
+      new_diff = db.execute "SELECT * FROM new_csv EXCEPT SELECT * FROM old_csv INTERSECT SELECT * FROM new_csv"
+      db.execute "INSERT INTO old_diff SELECT * FROM old_csv EXCEPT SELECT * FROM new_csv INTERSECT SELECT * FROM old_csv"
+      db.execute "UPDATE old_diff SET status='deleted'"
+      old_diff = db.execute "SELECT * FROM old_diff"
 
-      db.execute "UPDATE old_csv SET status='deleted'"
-      res = db.execute 'SELECT * FROM old_csv'
-      res.each { |r| diff << r[1, r.length] }
-
-      res = db.execute 'SELECT * FROM new_csv'
-      res.each { |r| diff << r[1, r.length] }
+      diff.concat new_diff
+      diff.concat old_diff
     ensure
       db.close if @db
     end
