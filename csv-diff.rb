@@ -80,10 +80,8 @@ module CSVDiff
     rescue Exception => e
       raise ArgumentError, "There was a problem loading the file " << path << ".\n" << e.message
     end
-    f = file.read
-    f2 = f.gsub(/\r\n?/, "\n")
-    puts "zut" if f2[/\r\n?/]
-    CSV.parse f2
+
+    CSV.parse file.read.gsub(/\r\n?/, "\n")
   end
 
   def self.write(csv_array, output = nil)
@@ -158,6 +156,13 @@ module CSVDiff
 
   def self.download(loc, uri, token)
     # Download current CSV report from Canvas
+
+    # Start the report
+    # POST /api/v1/accounts/:account_id/reports/:report
+    # Loop, checking status until report is downloadable
+    # GET /api/v1/accounts/:account_id/reports/:report/:id
+    #   "Waiting..." message while working
+    # Use "file_url" property to download file to a directory (specified by loc)
   end
 
   def self.run(old_path, new_path, output_path)
